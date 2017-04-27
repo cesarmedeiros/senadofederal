@@ -17,7 +17,8 @@ os.chdir(proj_path)
 from django.core.wsgi import get_wsgi_application
 application = get_wsgi_application()
 
-from senadores.models import Parlamentar, Partido, Mandato, Legislatura
+from senadores.models import Parlamentar, Partido, Mandato, Legislatura\
+							, Exercicio, Afastamento
 
 
 def get_from_url(url):
@@ -84,8 +85,36 @@ def create_or_update_parlamentar():
 											, mandato['SegundaLegislaturaDoMandato']['DataFim'])
 		mandatoobj.segunda_legislatura = segunda_legislaturaobj
 		mandatoobj.save()
-		print('   Mandato Criado')
 
+		print('	Mandato Criado')
+
+		exercicios = mandato['Exercicios']
+		exercicios_list = []
+		tipo = type(exercicios['Exercicio'])
+		if tipo == dict:	
+			exercicios_list.append(exercicios['Exercicio'])
+		else:
+			exercicios_list = exercicios['Exercicio']
+
+		for exercicio in exercicios_list:
+			data_fim=None
+			sigla_afastamento=''
+			descricao_afastamento=''
+			key = 'DataFim' 
+			if key in exercicio.keys():
+				data_fim = exercicio['DataFim']
+				key = 'SiglaCausaAfastamento'
+				if key in exercicio.keys():
+					sigla_afastamento = exercicio['SiglaCausaAfastamento']
+					descricao_afastamento = exercicio['DescricaoCausaAfastamento']
+			exercicioobj = Exercicio()
+			exercicioobj.mandato = mandatoobj
+			exercicioobj.codigo = exercicio['CodigoExercicio']
+			exercicioobj.data_inicio = exercicio['DataInicio']
+			exercicioobj.data_fim = data_fim
+			exercicioobj.afastamento = Afastamento.get_or_create(sigla_afastamento, descricao_afastamento)
+			exercicioobj.save()
+			print('		Exercício criado')
 print('Criando/atualizando listagem de partidos')
 create_or_update_partido()
 
