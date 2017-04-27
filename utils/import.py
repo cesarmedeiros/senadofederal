@@ -17,7 +17,7 @@ os.chdir(proj_path)
 from django.core.wsgi import get_wsgi_application
 application = get_wsgi_application()
 
-from senadores.models import Parlamentar, Partido
+from senadores.models import Parlamentar, Partido, Mandato, Legislatura
 
 
 def get_from_url(url):
@@ -47,7 +47,9 @@ def create_or_update_parlamentar():
 	for parlamentar in parlamentar_list_json['ListaParlamentarEmExercicio']['Parlamentares']['Parlamentar']:
 		codigo_parlamentar = parlamentar['IdentificacaoParlamentar']['CodigoParlamentar']
 
-		if Parlamentar.objects.filter(codigo_parlamentar=codigo_parlamentar):
+		parlamentarobj = Parlamentar.objects.filter(codigo_parlamentar=codigo_parlamentar)
+		if parlamentarobj:
+			parlamentarobj = parlamentarobj[0]
 			print(parlamentar['IdentificacaoParlamentar']['NomeParlamentar'])
 		else:
 			parlamentarobj = Parlamentar()
@@ -62,7 +64,27 @@ def create_or_update_parlamentar():
 			parlamentarobj.uf = parlamentar['IdentificacaoParlamentar']['UfParlamentar']
 			parlamentarobj.partido = Partido.get_or_create(parlamentar['IdentificacaoParlamentar']['SiglaPartidoParlamentar'])
 			parlamentarobj.save()
-			print('Criado - %s' % parlamentarobj.nome)
+
+
+			print('Parlamentar Criado - %s' % parlamentarobj.nome)
+
+		mandato = parlamentar['Mandato']
+		mandatoobj = Mandato()
+		mandatoobj.parlamentar = parlamentarobj;
+		mandatoobj.codigo_mandato = mandato['CodigoMandato']
+		mandatoobj.uf = mandato['UfParlamentar']
+		mandatoobj.participacao = mandato['DescricaoParticipacao']
+		primeira_legislaturaobj= Legislatura.get_or_create(mandato['PrimeiraLegislaturaDoMandato']['NumeroLegislatura']
+											, mandato['PrimeiraLegislaturaDoMandato']['DataInicio']
+											, mandato['PrimeiraLegislaturaDoMandato']['DataFim'])
+		mandatoobj.primeira_legislatura = primeira_legislaturaobj
+
+		segunda_legislaturaobj = Legislatura.get_or_create(mandato['SegundaLegislaturaDoMandato']['NumeroLegislatura']
+											, mandato['SegundaLegislaturaDoMandato']['DataInicio']
+											, mandato['SegundaLegislaturaDoMandato']['DataFim'])
+		mandatoobj.segunda_legislatura = segunda_legislaturaobj
+		mandatoobj.save()
+		print('   Mandato Criado')
 
 print('Criando/atualizando listagem de partidos')
 create_or_update_partido()
