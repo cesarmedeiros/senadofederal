@@ -23,6 +23,8 @@ class Partido(models.Model):
 		if partido:
 			partido = partido[0]
 		else:
+			if nome == '':
+				nome = sigla
 			partido = Partido()
 			partido.sigla = sigla
 			partido.nome = nome
@@ -48,7 +50,8 @@ class Parlamentar(models.Model):
 		, max_length = 10)
 
 	nome = models.CharField('Nome Político'
-		, max_length = 45)
+		, max_length = 45
+		, null = True)
 
 	nome_completo = models.CharField('Nome Completo do Parlamentar'
 		, max_length = 45)
@@ -64,7 +67,7 @@ class Parlamentar(models.Model):
 	sexo = models.CharField(choices = SEXO_CHOICE
 		, max_length = 1)
 
-	email = models.EmailField()
+	email = models.EmailField(null=True)
 
 	foto_url = models.URLField('URL para foto do Parlamentar')
 
@@ -72,7 +75,7 @@ class Parlamentar(models.Model):
 
 
 	def __str__(self):
-		return self.nome
+		return self.codigo_parlamentar
 
 	class Meta:
 		app_label = 'senadores'
@@ -141,9 +144,24 @@ class Afastamento(models.Model):
 	def __str__(self):
 		return self.sigla
 
+	def get_or_create(sigla, descricao):
+		if len(sigla)==0:
+			return None
+		else:
+			afastamento = Afastamento.objects.filter(sigla=sigla)
+			
+			if afastamento:
+				afastamento = afastamento[0]
+			else:
+				afastamento = Afastamento(sigla=sigla, descricao=descricao)
+				afastamento.save()
+		
+			return afastamento
+
 	class Meta:
 		ordering = ('sigla', )
 		app_label = 'senadores'
+
 
 class Exercicio(models.Model):
 	mandato = models.ForeignKey(Mandato)
@@ -165,3 +183,18 @@ class Exercicio(models.Model):
 		ordering = ('mandato', 'data_inicio', )
 		app_label = 'senadores'
 
+
+class MandatoSuplentes(models.Model):
+	mandato = models.ForeignKey(Mandato)
+
+	suplente = models.ForeignKey(Parlamentar)
+
+	descricao = models.CharField('Descrição da participação',
+		max_length = 50)
+
+	def __str__(self):
+		return "{} {} de {} ".format(self.suplente, self.descricao, self.mandato.parlamentar)
+
+	class Meta:
+		ordering = ('mandato', 'suplente', )
+		app_label = 'senadores'

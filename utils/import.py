@@ -18,7 +18,7 @@ from django.core.wsgi import get_wsgi_application
 application = get_wsgi_application()
 
 from senadores.models import Parlamentar, Partido, Mandato, Legislatura\
-							, Exercicio, Afastamento
+							, Exercicio, Afastamento, MandatoSuplentes
 
 
 def get_from_url(url):
@@ -40,8 +40,57 @@ def create_or_update_partido():
 		if partidoobj:
 			print("Criado o partido %s - %s"%(partidoobj.sigla, partidoobj.nome))
 
+def get_key_value(dicionario, key):
+	if key in dicionario:
+		return dicionario[key]
+	else:
+		return None
 
-def create_or_update_parlamentar():
+def create_or_update_parlamentar(codigo_parlamentar, uf_parlamentar):
+	url = "http://legis.senado.leg.br/dadosabertos/senador/" + codigo_parlamentar
+	parlamentarobj = Parlamentar.objects.filter(codigo_parlamentar=codigo_parlamentar)
+	if parlamentarobj:
+		parlamentarobj = parlamentarobj[0]
+	else:
+		parlamentar_list_json = get_from_url(url)
+
+		dados = parlamentar_list_json['DetalheParlamentar']['Parlamentar']['IdentificacaoParlamentar']
+
+		parlamentarobj = Parlamentar()
+		parlamentarobj.codigo_parlamentar = codigo_parlamentar
+		parlamentarobj.nome =  get_key_value(dados, 'NomeParlamentar') 
+		parlamentarobj.nome_completo = dados['NomeCompletoParlamentar']
+		parlamentarobj.forma_tratamento = dados['FormaTratamento'] 
+		parlamentarobj.sexo = dados['SexoParlamentar'][0]
+		parlamentarobj.email = ''
+		key='UrlFotoParlamentar'
+		value=""
+		if key in dados.keys():
+			value = dados[key]
+		parlamentarobj.foto_url = value
+		
+		key='UrlPaginaParlamentar'
+		value=""
+		if key in dados.keys():
+			value = dados[key]
+		parlamentarobj.pagina_url = value
+		#parlamentarobj.uf = parlamentar_list_json['DetalheParlamentar']['Parlamentar']['UltimoMandato']['UfParlamentar']
+		parlamentarobj.uf = uf_parlamentar
+
+		key='SiglaPartidoParlamentar'
+		if key in dados.keys():
+			value = dados['SiglaPartidoParlamentar']
+		else:
+			value = 'SEMPARTIDO'
+		
+		parlamentarobj.partido = Partido.get_or_create(value)
+
+		parlamentarobj.save()
+
+	return parlamentarobj
+
+
+def create_or_update_parlamentares():
 	url_senador_atual = "http://legis.senado.leg.br/dadosabertos/senador/lista/atual"
 	parlamentar_list_json = get_from_url(url_senador_atual)
 
@@ -115,8 +164,33 @@ def create_or_update_parlamentar():
 			exercicioobj.afastamento = Afastamento.get_or_create(sigla_afastamento, descricao_afastamento)
 			exercicioobj.save()
 			print('		Exercício criado')
+
+		#Importação de suplentes
+
+		suplentes = mandato['Suplentes']
+		suplentes_list = []
+		tipo = type(suplentes['Suplente'])
+		if tipo == dict:	
+			suplentes_list.append(suplentes['Suplente'])
+		else:
+			suplentes_list = suplentes['Suplente']
+
+		for suplente in suplentes_list:
+			suplenteobj = MandatoSuplentes()
+			suplenteobj.descricao = suplente['DescricaoParticipacao']
+			suplenteobj.mandato = mandatoobj
+			suplenteobj.suplente = create_or_update_parlamentar(suplente['CodigoParlamentar'], mandatoobj.uf)
+			suplenteobj.save()
+			print('			Suplente %s criado'%suplenteobj.suplente)
+
+
+
+
+
+
+
 print('Criando/atualizando listagem de partidos')
 create_or_update_partido()
 
 print('Criando/atualizando listagem de parlamentares')
-create_or_update_parlamentar()
+create_or_update_parlamentares()
