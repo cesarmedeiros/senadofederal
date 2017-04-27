@@ -9,17 +9,37 @@ class Partido(models.Model):
 	sigla = models.CharField('Sigla'
 		, max_length = 10)
 
+	data_criacao = models.DateField('Data de Criação'
+		, null = True)
+
+	codigo = models.CharField('Código do Partido'
+		, max_length = 6)
+
 	def __str__(self):
 		return self.nome
 
+	def get_or_create(sigla, nome="", data_criacao="", codigo=""):
+		partido = Partido.objects.filter(sigla=sigla)
+		if partido:
+			partido = partido[0]
+		else:
+			partido = Partido()
+			partido.sigla = sigla
+			partido.nome = nome
+			partido.data_criacao = data_criacao
+			partido.codigo = codigo
+			partido.save()
+		return partido
+
 	class Meta:
 		ordering = ('sigla', )
+		app_label = 'senadores'
 
 
 
 class Parlamentar(models.Model):
 
-	SEXO_OPTIONS = (
+	SEXO_CHOICE = (
 			('F', 'Feminino'),
 			('M', 'Masculino')
 		)
@@ -38,21 +58,25 @@ class Parlamentar(models.Model):
 
 	partido = models.ForeignKey(Partido)
 
-	forma_tratamento = models.CharField('Forma de Tratamento',
-			, max_length = 15)
+	forma_tratamento = models.CharField('Forma de Tratamento'
+		, max_length = 15)
 
-	sexo = models.CharField(options = SEXO_OPTIONS
+	sexo = models.CharField(choices = SEXO_CHOICE
 		, max_length = 1)
 
 	email = models.EmailField()
 
-	foto_url = URLField('URL para foto do Parlamentar')
+	foto_url = models.URLField('URL para foto do Parlamentar')
 
-	pagina_url = URLField('Endereço da Página do Parlamentar')
+	pagina_url = models.URLField('Endereço da Página do Parlamentar')
 
 
 	def __str__(self):
 		return self.nome
+
+	class Meta:
+		app_label = 'senadores'
+
 
 class Legislatura(models.Model):
 	data_inicio = models.DateField('Data de início da Legislatura')
@@ -61,6 +85,10 @@ class Legislatura(models.Model):
 
 	def __str__(self):
 		return "{} - {}".format(self.inicio, self.fim)
+
+	class Meta:
+		app_label = 'senadores'
+
 
 class Mandato(models.Model):
 	codigo_mandato = models.CharField('Código do Mandato'
@@ -72,9 +100,12 @@ class Mandato(models.Model):
 	participacao = models.CharField('O tipo de participação'
 		, max_length = 20)
 
-	primeira_legislatura = models.ForeignKey(Legislatura)
+	primeira_legislatura = models.ForeignKey(Legislatura, related_name='primeira')
 
-	segunda_legislatura = models.ForeignKey(Legislatura)
+	segunda_legislatura = models.ForeignKey(Legislatura, related_name='segunda')
+
+	class Meta:
+		app_label = 'senadores'
 
 
 class Afastamento(models.Model):
@@ -90,6 +121,7 @@ class Afastamento(models.Model):
 
 	class Meta:
 		ordering = ('sigla', )
+		app_label = 'senadores'
 
 class Exercicio(models.Model):
 	mandato = models.ForeignKey(Mandato)
@@ -107,4 +139,5 @@ class Exercicio(models.Model):
 
 	class Meta:
 		ordering = ('mandato', 'data_inicio', )
+		app_label = 'senadores'
 
