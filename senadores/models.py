@@ -79,18 +79,40 @@ class Parlamentar(models.Model):
 
 
 class Legislatura(models.Model):
+
+	codigo = models.CharField('Código da Legislatura'
+		, max_length = 6
+		, unique = True)
+
 	data_inicio = models.DateField('Data de início da Legislatura')
 	
 	data_fim = models.DateField('Data de fim da Legislatura')
 
 	def __str__(self):
-		return "{} - {}".format(self.inicio, self.fim)
+		return "{} - {}".format(self.data_inicio, self.data_fim)
+
+	def get_or_create(codigo, data_inicio, data_fim):
+		legislatura = Legislatura.objects.filter(codigo=codigo)
+
+		if legislatura:
+			legislatura = legislatura[0]
+		else:
+			legislatura = Legislatura()
+			legislatura.codigo = codigo
+			legislatura.data_inicio = data_inicio
+			legislatura.data_fim = data_fim
+			legislatura.save()
+
+		return legislatura
 
 	class Meta:
 		app_label = 'senadores'
 
 
 class Mandato(models.Model):
+
+	parlamentar = models.ForeignKey(Parlamentar)
+
 	codigo_mandato = models.CharField('Código do Mandato'
 		, max_length = 6)
 
@@ -135,7 +157,9 @@ class Exercicio(models.Model):
 		, null = True
 		, blank = True)
 
-	afastamento = models.ForeignKey(Afastamento) 
+	afastamento = models.ForeignKey(Afastamento
+		, null = True
+		, blank = True) 
 
 	class Meta:
 		ordering = ('mandato', 'data_inicio', )
